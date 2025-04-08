@@ -102,7 +102,7 @@ Let's consider a logical approach: If this hash from the `.ini` file has to be l
 
 We get a hit! Then another hit! *...and many, many more hits after that.*
 
-It becomes obvious that this process calls this function hundreds of times during the execution of this program. This is quite common for programs with many modules or configuration files. How do we know which of the hundreds of calls to this function stems from our target location? Every time our debugger hits on the `ReadFile` breakpoint, we can take a peek at the **call stack**, a record of *how* the program got to where it is. If this `ReadFile` function call stemmed from our `pkgsh.dll` module, we should see it somewhere in the execution sequence within our call stack.
+It becomes obvious that this process calls this function hundreds of times during its execution. This is quite common for programs with many modules or configuration files. How do we know which of the hundreds of calls to this function stems from our target location? Every time our debugger hits on the `ReadFile` breakpoint, we can take a peek at the **call stack**, a record of *how* the program got to where it is. If this `ReadFile` function call stemmed from our `pkgsh.dll` module, we should see it somewhere in the execution sequence within our call stack.
 
 And sure enough, among the many hits, one stands out. We catch a `ReadFile` with `pkgsh.dll` right there in the stack. Bingo.
 
