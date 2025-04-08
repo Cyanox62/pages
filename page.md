@@ -52,7 +52,7 @@ Let's take a look at some simple examples and compare them to high-level program
 Now here's where things get interesting: **jumps**.
 A jump lets the program change the order of execution by skipping to a different instruction elsewhere in the code.
 - `jmp some_label` – An unconditional jump. It says, "Go here no matter what."
-- `je some_label` – A conditional jump that stands for "jump if equal." It only jumps if the last cmp found the respective values to be equal.
+- `je some_label` – A conditional jump that stands for "jump if equal." It only jumps if the last `cmp` found the respective values to be equal, known by those internal CPU flags that were previously set.
 
 There are other conditional jumps too (`jne`, `jg`, `jl`, etc.), each based on different comparison outcomes, but the core idea is the same: compare something, then decide whether to jump based on the result. You may also see `call` instructions, which for our purposes you can assume to mean the same as an unconditional jump.
 
