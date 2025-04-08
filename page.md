@@ -361,10 +361,10 @@ When modifying binaries, bytes cannot be added nor removed or the structure of t
 
 Now let's let our program finish execution. The code will begin the hash check, fail the first comparison, and jump to what it believes is the failure path at `5B6125D3`. But thanks to our handy work, the program has unknowingly leapt into what is now a perfect clone of the success path.
 
-With that, we now have an application free from popups! No matter what value we input as the hash, the program will always jump to a success path, tricking the program into accepting our hash and avoiding the popup. 
+With that, we now have an application free from popups! No matter what value we input as the hash, the program will always jump to a success path, tricking the program into always accepting our hash and avoiding the popup. 
 
 Now we just need to save our work! x32dbg comes with a feature for patching a module, allowing you to simply save a copy of the loaded module with your modifications, or "patches".
-<br>
+
 So, let's give that a try...
 ```
 +---------------------------------------+
@@ -424,8 +424,8 @@ This brings us to a section of code that hits both of our requirements:
 2. It executes prior to the non-persistent hash validation instructions
 
 To understand how we can use this, let's also introduce two new concepts:
-1. Code Cave - An unused space in the module where we can safely insert our own code without overwriting important instructions.
-2. Trampoline Hook - Overwriting an existing jump instruction to divert execution to our code cave, followed by jumping to the original location after our instructions execute.
+1. **Code Cave** - An unused space in the module where we can safely insert our own code without overwriting important instructions.
+2. **Trampoline Hook** - Overwriting an existing jump instruction to divert execution to our code cave, followed by jumping to the original location after our instructions execute.
 
 Looking back at the code block above, that unconditional jump instruction is the perfect candidate for our trampoline hook. Since it's already jumping somewhere else (`5B1F07F9`), we can modify it to jump to our code cave to execute some custom instructions instead. We'll need to remember that original destination address though. After our code cave does its work, we'll want to jump back to where the program originally intended to go.
 
@@ -452,12 +452,13 @@ Let's also quickly go back to that code block from earlier with the unconditiona
 5B41EBBA | jmp 5B59E8C1                 ;  Jump to the address of our code cave!
 ```
 
-With the first half of the hook in place, it's time to start writing our custom instructions into the code cave for us to execute after jumping there.<br>
+With the first half of the hook in place, it's time to start writing our custom instructions into the code cave for us to execute after jumping there.
+
 Hang onto your hats, this will get a bit bumpy.
 
 ***
 
-Our end goal will be to make the program execute these three instructions:
+Let's review our main goal here, which boils down to executing these three instructions:
 ```asm
 mov word ptr ds:[base_address+125D3],C033
 mov word ptr ds:[base_address+125D5],9090
@@ -466,7 +467,8 @@ mov byte ptr ds:[base_address+125D7],90
 
 These instructions are simply performing the exact same overwrite on the failure path that we previously did manually. Just like in step 4, we overwrote the differing 5 bytes of instructions in the failure path with the 2 byte instruction from the success path, followed by 3 `nop`s, which are represented by `0x90` in hex.
 
-`125D3`, `125D5`, and `125D7` are the respective offsets where we can find those validation instructions in this module. That offset will always be static relative to the module position, but the module itself doesn't always load in the same position in memory. This is due to a security mechanism known as Address Space Layout Randomization (ASLR). The location the module loads into memory space is known as the **base address** of the module.<br>
+`125D3`, `125D5`, and `125D7` are the respective offsets where we can find those validation instructions in this module. That offset will always be static relative to the module position, but the module itself doesn't always load in the same position in memory. This is due to a security mechanism known as Address Space Layout Randomization (ASLR). The location the module loads into memory space is known as the **base address** of the module.
+
 Here's a visualization:
 
 ```c
@@ -484,7 +486,7 @@ Here's a visualization:
 
 Notice how although the base address changes across executions, the offset always remains the same. This makes the formula to calculate the location we need to write in any execution `base_address + offset`, as can be seen in the `mov` instructions above.
 
-Consequently, before we can do these writes, we need to dynamically get the base address of the `pkgsh.dll` module in memory. We can do this by traversing the Process Environment Block (PEB) within Windows. The PEB is a structure within the memory of a process that contains information about a running process, including the loaded modules and their respective base addresses. The PEB can always be accessed through the segment register `fs` at a static offset of `0x30` in a 32-bit process. We'll arbitrarily choose `eax` as our register to store this in.
+Consequently, before we can do these writes, we need to dynamically get the base address of the `pkgsh.dll` module in memory. We can do this by traversing the Process Environment Block (PEB) within Windows. The PEB is a structure within the memory of a process that contains information about a running process, including all loaded modules and their respective base addresses. The PEB can always be accessed through the segment register `fs` at a static offset of `0x30` in a 32-bit process. We'll arbitrarily choose `eax` as our register to store this in.
 ```asm
 mov eax, dword ptr fs:[30]
 ```
@@ -513,7 +515,7 @@ mov eax, dword ptr ds:[eax]
 
 You'll notice at this point that I'm using seemingly random hex offsets to find the information we're looking for in the above instructions. These offsets are gathered through an understanding of various internal Windows data structures. Let's demonstrate this by walking through how the offset of `0x14` was identified to find the `InMemoryOrderModuleList` structure within the `PEB_LDR_DATA` structure, the step above marked with a `*`.
 
-As defined by Windows, here is the `PEB_LDR_DATA` data structure:
+[As defined by Windows](https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-peb_ldr_data), here is the `PEB_LDR_DATA` data structure:
 ```c
 typedef struct _PEB_LDR_DATA {       // Offset   Size
  BYTE       Reserved1[8];            // 0x00   | 8 bytes
@@ -576,13 +578,13 @@ With all our pieces ready, let's start filling in jump addresses and piecing the
 
 5B59E8D0 | mov esi,dword ptr ds:[eax+28]      ;  Comparison loop
 5B59E8D3 | cmp word ptr ds:[esi],4F        
-5B59E8D7 | jne 5B59E8F5          
+5B59E8D7 | jne 5B59E8F5                       ;  Jump to failure path         
 5B59E8D9 | cmp word ptr ds:[esi+2],6E      
-5B59E8DE | jne 5B59E8F5          
+5B59E8DE | jne 5B59E8F5                       ;  Jump to failure path     
 5B59E8E0 | cmp word ptr ds:[esi+4],6C      
-5B59E8E5 | jne 5B59E8F5          
+5B59E8E5 | jne 5B59E8F5                       ;  Jump to failure path     
 5B59E8E7 | cmp word ptr ds:[esi+6],69      
-5B59E8EC | jne 5B59E8F5          
+5B59E8EC | jne 5B59E8F5                       ;  Jump to failure path       
                              
 5B59E8EF | mov ebx,dword ptr ds:[eax+10]      ;  Success path
 5B59E8F2 | jmp 5B59E8FB                       ;  Jump over failure path!
@@ -598,7 +600,7 @@ With all our pieces ready, let's start filling in jump addresses and piecing the
 5B59E914 | popfd                              ;  Restores flag integrity
 5B59E915 | popad                              ;  Restores register integrity
 
-5B59E916 | jmp 5B1F07F9                       ;  The *original* location our trampoline hook was supposed to jump to
+5B59E916 | jmp 5B1F07F9                       ;  The original location our unconditional jump was supposed to jump to
 ```
 
 Notice that at the end of this function, we jump back to the *original address* that our unconditional jump was initially intended to reach. This completes the trampoline hook!
@@ -619,6 +621,6 @@ Let's now finally save our module by applying our patches:
 +---------------------------------+
 ```
 
-Now that we've patched the instructions that exist on disk, our changes are permanent. The next time the program runs, whether it's on our machine or someone else's, it'll behave exactly as we've modified it. The validation check is bypassed, and the popup is gone for good.
+Now that we've patched the instructions that exist on disk, our changes are permanent. The next time the program runs, whether it's on our machine or someone else's, it'll behave exactly as we've modified it. It dynamically modifies the hash validation code, and the popup is gone for good.
 
 From here on out, it's smooth sailing.
