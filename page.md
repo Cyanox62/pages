@@ -42,7 +42,7 @@ Let's dive in.
 
 ## x86 Assembly
 
-x86 assembly can be very daunting at first glance. But underneath all the arcane syntax, it boils down to a simple rule: instructions are executed one at a time, from top to bottom unless explicitly told to go elsewhere. One of the core concepts is the idea of *registers*. These registers can be thought of as the CPU's hands. If the CPU wants to do something with data, whether it be addition, subtraction, comparisons, etc., it must that data in a register first. Unlike variables in high-level languages, registers are limited in number and can have special purposes, so you have to be careful about what you put where.
+x86 assembly can be very daunting at first glance. But underneath all the arcane syntax, it boils down to a simple rule: instructions are executed one at a time, from top to bottom unless explicitly told to go elsewhere. One of the core concepts is the idea of *registers*. These registers can be thought of as the CPU's hands. If the CPU wants to do something with data, whether it be addition, subtraction, comparisons, etc., it must have that data in a register first. Unlike variables in high-level languages, registers are limited in number and can have special purposes, so you have to be careful about what you put where.
 
 Let's take a look at some simple examples and compare them to high-level programming languages.
 - `mov eax, 1` - This is like `int x = 1`. It moves the value of 1 into the register `eax`.
