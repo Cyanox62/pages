@@ -83,7 +83,7 @@ Being that our target application is 32-bit, and 32-bit applications tend to use
 
 This gets us a hit on `shell32.ShellExecuteA()`!<br>
 Right before this function executes, let's inspect our registers and see what data is being held in them:
-```x86asm
+```asm
 EAX     7630A5F0        <shell32.ShellExecuteA>
 ESI     05A1FC70        "https://popup-website.com"
 EDI     5B565830        pkgsh.5B565830
@@ -103,7 +103,7 @@ It becomes obvious that this process calls this function hundreds of times durin
 
 And sure enough, among the many hits, one stands out. We catch a `ReadFile` with `pkgsh.dll` right there in the stack. Bingo.
 
-```
+```asm
 Callstack:                                                              Interpreted Flow:
 ------------------------------------------------------------            ------------------------------
 Address   To         From        Size   Party    Function               [0218EBCC] pkgsh.105018
@@ -117,7 +117,7 @@ Address   To         From        Size   Party    Function               [0218EBC
 
 Stepping forward a few instructions, we find something interesting in the nearby code:
 
-```x86asm
+```asm
 5B603CD1    test eax, eax                 ;  Checking if eax = 0
 5B603CD3    je  5B603D28              ─┐  ;  Jumping if that condition succeeds
                                        │
@@ -151,7 +151,7 @@ Stepping forward a few instructions, we find something interesting in the nearby
 
 Let's zoom in on that interesting line from above:
 
-```x86asm
+```asm
 5B603CE9 | mov edx, 5B776E8C
 ```
 
@@ -208,7 +208,7 @@ Now let's add a "Memory Access" breakpoint on the first byte of this string, the
 We got a hit on a small function accessing our hash! At this point, `eax` currently holds our hash value, which confirms this function read in our hash from memory.<br>
 Let's take a closer look at what this is doing:
 
-```x86asm
+```asm
 5B60E7B0    lea edx,[ecx+1]               ;  Set edx to one byte past the start of the string
 5B60E7B3    mov al,[ecx]           ◄──┐   ;  Load current byte (character) into the al register
                                       │           ; ecx represents our current index in the string, starting at 0
@@ -240,7 +240,7 @@ int length = ecx - edx
 While it does access our hash, this isn't doing any sort of validation, so this is likely not what we're looking for. Let's skip to the next time the memory is accessed.<br>
 We got another hit! Here's the next spot the code accesses our hash:
 
-```x86asm
+```asm
 5B707E92    mov esi,[esp+10]      ;  Loads the start of the hash into esi
 5B707E96    mov ecx,[esp+14]      ;  Loads the length of the hash into ecx
 5B707E9A    mov edi,[esp+C]       ;  Loads the end of the hash into edi
@@ -280,7 +280,7 @@ Address   Hex                                              ASCII
 And unsurprisingly, we find our hash right here, identical to the first one. We know what we're doing by this point, let's keep following the breadcrumb trail and breakpoint the first byte again on this new location to see when this memory is accessed.<br>
 The very first time this memory location is accessed, we come across something very promising:
 
-```x86asm
+```asm
 ; Hash comparison loop
 5B612590 | mov eax,dword ptr ds:[ecx]     ; Load 4 bytes from first hash
 5B612592 | cmp eax,dword ptr ds:[edx]     ; Compare with 4 bytes from second hash
@@ -319,7 +319,7 @@ With the failure path identified, we need to think of how to exploit this code. 
 How about instead we just convince the failure path to impersonate its successful counterpart?
 
 The only difference between the success path and the failure path are the first lines:
-```x86asm
+```asm
 Failure path               Success path
 -----------------------    -----------------------
 5B6125D3 | sbb eax,eax     5B6125DB | xor eax,eax 
@@ -332,7 +332,7 @@ Failure path               Success path
 No reason to overcomplicate this, let's just modify the failure path to match the success path exactly. That way, the validation won't know right from wrong.
 
 When modifying instructions, we need to be mindful of their size, something I've simplified in our assembly examples until now. In the binary world, each instruction occupies a specific number of bytes depending on both the instruction type and its parameters.
-```x86asm
+```asm
 ; Failure path (5 bytes total)
 sbb eax, eax    ; 0x19 0xC0
 or  eax, 1      ; 0x83 0xC8 0x01
@@ -342,7 +342,7 @@ xor eax, eax    ; 0x33 0xC0
 ```
 When modifying binaries, bytes cannot be added nor removed or the structure of the program will be compromised. To account for the 3 remaining bytes on the failure path after we overwrite its two instructions with the one instruction from the success path, we can add 3 `nop`s. This instruction stands for "no operation" and takes 1 byte each, perfect to use for padding when needed.
 
-```x86asm
+```asm
 (Modified) Failure path             Success path
 --------------------------------    --------------------------------
 5B6125D3 | xor eax,eax | 33 C0      5B6125DB | xor eax,eax | 33 C0 
@@ -386,7 +386,7 @@ Unfortunately, saving this module isn't as easy as that due to the final layer o
 
 To illustrate a quick example, here's how a section of memory changes after the unpacking:
 
-```x86asm
+```asm
 Address      | Before (Obfuscated)        | After (Deobfuscated)                             
 -------------|----------------------------|---------------------------------------------
 5B60F7A0     | 00 00  -> add [eax], al    | 00 51 FF -> add byte ptr ds:[ecx-1], dl     
@@ -409,7 +409,7 @@ As such, our first step is to find when the instructions finish unpacking. This 
 This worked as expected and found a very large loop within the DLLs disk-written code. It's incredibly complex due to the aforementioned control flow obfuscation, but we don't care about the details. We just want to know when it's done. To do this, I'll set a breakpoint somewhere in this unpacking function and loop until the breakpoint stops hitting. Once the breakpoint no longer hits, I can slowly step forward and observe the differences in control flow now that the code has fully unpacked.
 
 This brings us to a section of code that hits both of our requirements:
-```x86asm
+```asm
 5BBCEBAC | cmp eax,1000000              ;  Executed only after unpacking has completed
 5BBCEBB1 | movsx eax,di               
 5BBCEBB4 | cmove eax,ebp                
@@ -427,7 +427,7 @@ Looking back at the code block above, that unconditional jump instruction is the
 
 With our hook location identified, let's find a place where we can create a code cave. Luckily, at the very bottom of the memory space of this module, there's roughly 500 empty instructions that exist on disk.
 
-```x86asm
+```asm
 5B59E8C1 | add byte ptr ds:[eax],al 
 5B59E8C3 | add byte ptr ds:[eax],al 
 5B59E8C5 | add byte ptr ds:[eax],al 
@@ -440,7 +440,7 @@ With our hook location identified, let's find a place where we can create a code
 
 This is a perfect spot for our code cave. Let's grab the first address, `5B59E8C1`, and use that as our entry point.<br>
 Let's also quickly go back to that code block from earlier with the unconditional jump and apply the first half of our trampoline hook.
-```x86asm
+```asm
 5B41EBAC | cmp eax,1000000              ;  Executed only after unpacking has completed
 5B41EBB1 | movsx eax,di               
 5B41EBB4 | cmove eax,ebp                
@@ -454,7 +454,7 @@ Hang onto your hats, this will get a bit bumpy.
 ***
 
 Our end goal will be to make the program execute these three instructions:
-```x86asm
+```asm
 mov word ptr ds:[base_address+125D3],C033
 mov word ptr ds:[base_address+125D5],9090
 mov byte ptr ds:[base_address+125D7],90 
@@ -481,27 +481,27 @@ Here's a visualization:
 Notice how although the base address changes across executions, the offset always remains the same. This makes the formula to calculate the location we need to write in any execution `base_address + offset`, as can be seen in the `mov` instructions above.
 
 Consequently, before we can do these writes, we need to dynamically get the base address of the `pkgsh.dll` module in memory. We can do this by traversing the Process Environment Block (PEB) within Windows. The PEB is a structure within the memory of a process that contains information about a running process, including the loaded modules and their respective base addresses. The PEB can always be accessed through the segment register `fs` at a static offset of `0x30` in a 32-bit process. We'll arbitrarily choose `eax` as our register to store this in.
-```x86asm
+```asm
 mov eax, dword ptr fs:[30]
 ```
 
 Within the PEB, we access the `PEB_LDR_DATA` structure through offset `0xC`.
-```x86asm
+```asm
 mov eax, dword ptr ds:[eax+C]
 ```
 
 `*` Next, we get the `InMemoryOrderModuleList` structure through offset `0x14`.
-```x86asm
+```asm
 mov eax, dword ptr ds:[eax+14]
 ```
 
 Finally, we can access each module's name through offset `0x28`.
-```x86asm
+```asm
 mov esi, dword ptr ds:[eax+28]
 ```
 
 To move to the next module, we can load the value at memory address `eax` at offset `0x0` (or just `eax`) to go to the next module in the list.
-```x86asm
+```asm
 mov eax, dword ptr ds:[eax]
 ```
 
@@ -523,14 +523,14 @@ typedef struct _PEB_LDR_DATA {       // Offset   Size
 ***
 
 With our information gathered, we can begin piecing our instructions together. Let's first grab our pointer to the `InMemoryOrderModuleList`:
-```x86asm
+```asm
 mov eax, dword ptr fs:[30]
 mov eax, dword ptr ds:[eax+C]
 mov eax, dword ptr ds:[eax+14]
 ```
 
 Now we can define a loop. For each module, we'll read the offset `0x28` to get it's name, then use comparisons to check if this is the right module.
-```x86asm
+```asm
 mov esi,dword ptr ds:[eax+28]    ;  Grab the module name and store it in esi
 
 cmp word ptr ds:[esi],70         ;  Check if the first letter is 'p' (0x70 in hex)
@@ -550,19 +550,19 @@ jne failure                      ;  If it isn't, jump to failure path
 ```
 
 If all of these checks pass and we never hit a jump, we can flow right into our success path:
-```x86asm
+```asm
 mov ebx,dword ptr ds:[eax+10]    ;  Store the module's base address in `ebx`, which lives at offset 0x10
 ```
 
 And finally, if we fail any checks, we need to define our failure path:
-```x86asm
+```asm
 mov eax,dword ptr ds:[eax]       ;  Load the next module
 test eax,eax                     ;  Check if we've hit the end of the list
 jne loop                         ;  If we haven't hit the end, jump back to the top of the loop
 ```
 
 With all our pieces ready, let's start filling in jump addresses and piecing these instructions together in our code cave:
-```x86asm
+```asm
 5B59E8C1 | pushad                             ;  Maintains register integrity
 5B59E8C2 | pushfd                             ;  Maintains flag integrity
 
