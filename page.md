@@ -228,7 +228,7 @@ Let's take a closer look at what this is doing:
 After taking the time to understand this function, we can see this is counting the length of our hash.<br>
 Here is some equivalent pseudocode in a higher-level language:
 
-```c
+```cpp
 int ecx = 0
 int edx = ecx + 1
 while (hash.charAt(ecx) != 0) {
