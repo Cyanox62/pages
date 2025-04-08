@@ -85,7 +85,7 @@ And consider the Windows functions that are commonly used for opening websites:
 Being that our target application is 32-bit, and 32-bit applications tend to use ANSI, a solid first guess would be `user32.MessageBoxA()` and `shell32.ShellExecuteA()`. Let's add a breakpoint to both of those functions and run the program to see if either of them hit.
 
 This gets us a hit on `shell32.ShellExecuteA()`! The program paused execution right before this function executed.<br>
-Right before this function executes, let's inspect our registers and see what data is being held in them:
+Let's inspect our registers and see what data is being held in them just prior to execution:
 ```asm
 EAX     7630A5F0        <shell32.ShellExecuteA>
 ESI     05A1FC70        "https://popup-website.com"
