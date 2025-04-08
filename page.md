@@ -311,7 +311,7 @@ The very first time this memory location is accessed, we come across something v
 
 This is a hash comparison function, exactly what we've been looking for!
 
-What's clever here is the control flow: the main loop (`jae` at `5B61259F`) keeps the comparisons going as long as there are bytes left. After the loop ends, the final jump (`je` at `5B6125A4`) jumps to the success path only if we've matched everything exactly. If the final condition fails, the code naturally flows straight into the failure handler.
+What's clever here is the control flow: the main loop (`jae` at `5B61259F`) keeps the comparisons going as long as there are bytes left. After the loop ends, the final jump (`je` at `5B6125A4`) jumps to the success path only if we've matched everything exactly. If the final condition fails, the code naturally flows straight into the failure path.
 
 Now that we've found our needle in the haystack, the more crucial piece of our puzzle is in place!<br>
 Time to make it forget its true from false.
