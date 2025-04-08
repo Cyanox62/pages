@@ -77,7 +77,7 @@ With nothing to go off, the best way to go about finding our target module is to
 Let's consider the Windows functions that are commonly used for displaying popups:
 - `user32.MessageBoxA()`       - ANSI (8-bit character) version
 - `user32.MessageBoxW()`       - Wide character (UTF-16) version
-- 
+
 And consider the Windows functions that are commonly used for opening websites:
 - `shell32.ShellExecuteA()`    - ANSI (8-bit character) version
 - `shell32.ShellExecuteW()`    - Wide character (UTF-16) version
