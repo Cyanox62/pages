@@ -280,7 +280,8 @@ Address   Hex                                              ASCII
 04DA5058  65 34 66 36 61 38 63 30 64 32 65 34 66 36 61 38  e4f6a8c0d2e4f6a8  
 ```
 
-And unsurprisingly, we find our hash right here, identical to the first one. We know what we're doing by this point, let's keep following the breadcrumb trail and breakpoint the first byte again on this new location to see when this memory is accessed.<br>
+And unsurprisingly, we find our hash right here, identical to the first one. We know what we're doing by this point, let's keep following the breadcrumb trail and breakpoint the first byte again on this new location to see when this memory is accessed.
+
 The very first time this memory location is accessed, we come across something very promising:
 
 ```asm
