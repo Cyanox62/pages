@@ -2,6 +2,8 @@
 
 No one really likes popup advertisements in software. But for some reason, certain closed-source developers treat these popups like their precious relics, guarded with layers of protection and a palpable fear of tampering. I encountered a program that displayed a popup and opens a website on startup recently that caused me a minor enough inconvenience to take it personally.
 
+So I fired up my debugger, rolled up my sleeves, and dove head-first into a mess of overly-complicated x86 assembly.
+
 ## Planning the Attack
 
 To plan an attack on software we need to notice some trends or patterns to help us find a place to start. One key observation: the software only displayed the popup advertisements the *first* time you opened the software. This means a piece of information must be stored somewhere on disk, some little breadcrumb to let the program know, "Hey, the user's already seen this ad. Don't bug them again." 
