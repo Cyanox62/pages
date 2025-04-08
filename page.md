@@ -64,7 +64,7 @@ We will be exploring the program's assembly instructions with a **debugger**. A 
 
 One of the most powerful features in a debugger is a breakpoint. A breakpoint is like a checkpoint. You place it on a specific instruction, and when the program reaches that point, the debugger freezes execution so you can take a closer look. This is incredibly useful for catching the exact moment when something changes or something important happens.
 
-I'll be using x32dbg for this attack, but any debugger will do.
+I'll be using (x32dbg)[https://x64dbg.com/] for this attack, but any debugger will do.
 
 ## Step 1: Detective Work
 
@@ -363,7 +363,7 @@ Now let's let our program finish execution. The code will begin the hash check, 
 
 With that, we now have an application free from popups! No matter what value we input as the hash, the program will always jump to a success path, tricking the program into always accepting our hash and avoiding the popup. 
 
-Now we just need to save our work! x32dbg comes with a feature for patching a module, allowing you to simply save a copy of the loaded module with your modifications, or "patches".
+Now we just need to save our work! (x32dbg)[https://x64dbg.com/] comes with a feature for patching a module, allowing you to simply save a copy of the loaded module with your modifications, or "patches".
 
 So, let's give that a try...
 ```
@@ -530,9 +530,9 @@ typedef struct _PEB_LDR_DATA {       // Offset   Size
 
 With our information gathered, we can begin piecing our instructions together. Let's first grab our pointer to the `InMemoryOrderModuleList`:
 ```asm
-mov eax, dword ptr fs:[30]
-mov eax, dword ptr ds:[eax+C]
-mov eax, dword ptr ds:[eax+14]
+mov eax, dword ptr fs:[30]     ;  Get PEB
+mov eax, dword ptr ds:[eax+C]  ;  PEB -> PEB_LDR_DATA 
+mov eax, dword ptr ds:[eax+14] ;  PEB_LDR_DATA -> InMemoryOrderModuleList
 ```
 
 Now we can define a loop. For each module, we'll read the offset `0x28` to get it's name, then use comparisons to check if this is the right module.
