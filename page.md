@@ -212,11 +212,11 @@ We got a hit on a small function accessing our hash! At this point, `eax` curren
 Let's take a closer look at what this is doing:
 
 ```asm
-5B60E7B0    lea edx,[ecx+1]               ;  Set edx to one byte past the start of the string
-5B60E7B3    mov al,[ecx]           ◄──┐   ;  Load current byte (character) into the al register
+5B60E7B0    lea edx,[ecx+1]               ;  Set 'edx' to one byte past the start of the string
+5B60E7B3    mov al,[ecx]           ◄──┐   ;  Load current byte (character) into the 'al' register
                                       │           ; ecx represents our current index in the string, starting at 0
 5B60E7B5    inc ecx                   │   ;  Move to next character in preparation for the next loop
-5B60E7B6    test al,al                │   ;  Check if current character in al == 0   
+5B60E7B6    test al,al                │   ;  Check if current character in 'al' == 0   
                                       │           ; 0 represents a 'null terminator', which indicates the end of a string
 5B60E7B8    jne 5B60E7B3            ──┘   ;  If our comparison failed, keep looping
 
@@ -224,7 +224,7 @@ Let's take a closer look at what this is doing:
                                           ;  This indicates that we found the end of the string
 
 5B60E7BA    sub ecx,edx                   ;  Subtract the starting point from the ending point (plus one) to get string length
-5B60E7BC    mov eax,ecx                   ;  Store the length into eax
+5B60E7BC    mov eax,ecx                   ;  Store the length into 'eax'
 5B60E7BE    ret                           ;  Done!
 ```
 
@@ -244,9 +244,9 @@ While it does access our hash, this isn't doing any sort of validation, so this 
 We got another hit! Here's the next spot the code accesses our hash:
 
 ```asm
-5B707E92    mov esi,[esp+10]      ;  Loads the start of the hash into esi
-5B707E96    mov ecx,[esp+14]      ;  Loads the length of the hash into ecx
-5B707E9A    mov edi,[esp+C]       ;  Loads the end of the hash into edi
+5B707E92    mov esi,[esp+10]      ;  Loads the start of the hash into 'esi'
+5B707E96    mov ecx,[esp+14]      ;  Loads the length of the hash into 'ecx'
+5B707E9A    mov edi,[esp+C]       ;  Loads the end of the hash into 'edi'
 5B707E9E    mov eax, ecx
 5B707EA0    mov edx, ecx
 5B707EA2    add eax, esi
@@ -259,7 +259,7 @@ We got another hit! Here's the next spot the code accesses our hash:
 5B707EB5    cmp ecx, 0x80         ;  Is the length >= 128?
 5B707EB8    jae 5B707EC5          ;  Then jump to an error
 
-5B707EBA    rep movsb             ;  Copy hash buffer from esi to edi
+5B707EBA    rep movsb             ;  Copy hash buffer from 'esi' to 'edi'
 ```
 
 This appears to be copying our hash to a new location in memory.<br>
@@ -486,34 +486,41 @@ Here's a visualization:
 
 Notice how although the base address changes across executions, the offset always remains the same. This makes the formula to calculate the location we need to write in any execution `base_address + offset`, as can be seen in the `mov` instructions above.
 
-Consequently, before we can do these writes, we need to dynamically get the base address of the `pkgsh.dll` module in memory. We can do this by traversing the Process Environment Block (PEB) within Windows. The PEB is a structure within the memory of a process that contains information about a running process, including all loaded modules and their respective base addresses. The PEB can always be accessed through the segment register `fs` at a static offset of `0x30` in a 32-bit process. We'll arbitrarily choose `eax` as our register to store this in.
+Consequently, before we can do these writes, we need to dynamically get the base address of the `pkgsh.dll` module in memory. We can do this by using the Process Environment Block (PEB) within this process. This is a data structure that contains information about a running process, including the loaded modules and their respective base addresses. In order to access each respective module, we have to access a few sub-modules of the PEB first.
+
+To better illustrate this, consider a set of predefined rules:
+- A -> B
+- B -> C
+- C -> D
+
+In this example, if you have A you can get to B, if you have B you can get to C, etc.
+
+Let's further imagine:
+- We currently reside in letter A
+- The structure we need in order to access any module's name and base address resides in letter D
+
+We need three instructions to take our three "steps" deeper into these different structures to find the structure we need. Note that during these steps, we'll continuously overwrite `eax` with the value in our next step since we won't need that old reference anymore.
+
+Let's start by accessing the PEB, which can always be accessed through the segment register `fs` at a static offset of `0x30` in a 32-bit process. 
 ```asm
-mov eax, dword ptr fs:[30]
+mov eax, dword ptr fs:[30] ;  A -> B
 ```
 
 Within the PEB, we access the `PEB_LDR_DATA` structure through offset `0xC`.
 ```asm
-mov eax, dword ptr ds:[eax+C]
+mov eax, dword ptr ds:[eax+C] ;  B -> C
 ```
 
-`*` Next, we get the `InMemoryOrderModuleList` structure through offset `0x14`.
+Within `PEB_LDR_DATA`, can access the `InMemoryOrderModuleList` structure through offset `0x14`.
 ```asm
-mov eax, dword ptr ds:[eax+14]
+mov eax, dword ptr ds:[eax+14] ;  C -> D
 ```
 
-Finally, we can access each module's name through offset `0x28`.
-```asm
-mov esi, dword ptr ds:[eax+28]
-```
-
-To move to the next module, we can load the value at memory address `eax` at offset `0x0` (or just `eax`) to go to the next module in the list.
-```asm
-mov eax, dword ptr ds:[eax]
-```
+We've now reached the `InMemoryOrderModuleList` structure, which contians information about every loaded module, including their base address and full name.
 
 ***
 
-You'll notice at this point that I'm using seemingly random hex offsets to find the information we're looking for in the above instructions. These offsets are gathered through an understanding of various internal Windows data structures. Let's demonstrate this by walking through how the offset of `0x14` was identified to find the `InMemoryOrderModuleList` structure within the `PEB_LDR_DATA` structure, the step above marked with a `*`.
+You'll notice at this point that I'm using seemingly random hex offsets to find the information we're looking for in the above instructions. These offsets are gathered through an understanding of various internal Windows data structures. Let's demonstrate this by walking through how the offset of `0x14` was identified to find the `InMemoryOrderModuleList` structure within the `PEB_LDR_DATA` structure in the above instruction.
 
 [As defined by Windows](https://learn.microsoft.com/en-us/windows/win32/api/winternl/ns-winternl-peb_ldr_data), here is the `PEB_LDR_DATA` data structure:
 ```c
@@ -524,20 +531,29 @@ typedef struct _PEB_LDR_DATA {       // Offset   Size
 } PEB_LDR_DATA, *PPEB_LDR_DATA;
 ```
 
-`eax` currently represents the beginning of this structure, which is contiguous in memory. As such, we can take offsets from the beginning to access any individual member within this structure. If we examine the sizes of each member within this structure from top to bottom, we see that `InMemoryOrderModuleList` is a total of 28 bytes from the beginning of the structure, which converts to `0x14` in hex.
+`eax` currently represents the beginning of this structure, which is contiguous in memory. As such, we can take offsets from the beginning to access any individual member within this structure. If we examine the sizes of each member within this structure from top to bottom, we see that `InMemoryOrderModuleList` is a total of 28 bytes from the beginning of the structure, which converts to `0x14` in hex. This means we can take the bigging of the structure `eax` and add `0x14` to it to access `InMemoryOrderModuleList`.
 
 ***
 
-With our information gathered, we can begin piecing our instructions together. Let's first grab our pointer to the `InMemoryOrderModuleList`:
+A this point we have access to `InMemoryOrderModuleList`, which contains a list of all modules. Information about each module can be accessed via offsets the same way we did above. We currently have a reference to the very first module in the list.
+
+Given any module in the list, let's note down three important offsets:
+1. The module's full name = `0x28`
+2. The module's base address = `0x10`
+3. The next module in the list = `0x0`
+
+Now that we understand how to get our module base address, let's start constructing formal assembly.
+
+Our first step will be taking our sequential steps to find the `InMemoryOrderModuleList` structure and store it in `eax`:
 ```asm
-mov eax, dword ptr fs:[30]     ;  Get PEB
-mov eax, dword ptr ds:[eax+C]  ;  PEB -> PEB_LDR_DATA 
-mov eax, dword ptr ds:[eax+14] ;  PEB_LDR_DATA -> InMemoryOrderModuleList
+mov eax, dword ptr fs:[30]      ;  A -> B
+mov eax, dword ptr ds:[eax+C]   ;  B -> C
+mov eax, dword ptr ds:[eax+14]  ;  C -> D
 ```
 
-Now we can define a loop. For each module, we'll read the offset `0x28` to get it's name, then use comparisons to check if this is the right module.
+Now we can define a loop. For each module, we'll grab it's full name and then use comparisons to check if this is the right module.
 ```asm
-mov esi,dword ptr ds:[eax+28]    ;  Grab the module name and store it in esi
+mov esi,dword ptr ds:[eax+28]    ;  Store the module's full name in 'esi' (offset 0x28)
 
 cmp word ptr ds:[esi],70         ;  Check if the first letter is 'p' (0x70 in hex)
 jne failure                      ;  If it isn't, jump to failure path
@@ -557,17 +573,17 @@ jne failure                      ;  If it isn't, jump to failure path
 
 If all of these checks pass and we never hit a jump, we can flow right into our success path:
 ```asm
-mov ebx,dword ptr ds:[eax+10]    ;  Store the module's base address in `ebx`, which lives at offset 0x10
+mov ebx,dword ptr ds:[eax+10]    ;  Store the module's base address in 'ebx' (offset 0x10)
 ```
 
 And finally, if we fail any checks, we need to define our failure path:
 ```asm
-mov eax,dword ptr ds:[eax]       ;  Load the next module
+mov eax,dword ptr ds:[eax]       ;  Load the next module into 'eax' (offset 0x0, or just 'eax')
 test eax,eax                     ;  Check if we've hit the end of the list
 jne loop                         ;  If we haven't hit the end, jump back to the top of the loop
 ```
 
-With all our pieces ready, let's start filling in jump addresses and piecing these instructions together in our code cave:
+With all our pieces ready, let's fill in our jump addresses, add in our code to find the base address, and finally the code to make our instruction modifications:
 ```asm
 5B59E8C1 | pushad                             ;  Maintains register integrity
 5B59E8C2 | pushfd                             ;  Maintains flag integrity
