@@ -1,8 +1,8 @@
-# title :)
+# Titles are Difficult
 
 No one really likes popup advertisements in software. But for some reason, certain closed-source developers treat these popups like their precious relics, guarded with layers of protection and a palpable fear of tampering. I encountered a program that displayed a popup and opens a website on startup recently that caused me a minor enough inconvenience to take it personally.
 
-# Planning the Attack
+## Planning the Attack
 
 To plan an attack on software we need to notice some trends or patterns to help us find a place to start. One key observation: the software only displayed the popup advertisements the *first* time you opened the software. This means a piece of information must be stored somewhere on disk, some little breadcrumb to let the program know, "Hey, the user's already seen this ad. Don't bug them again." 
 
@@ -38,7 +38,7 @@ Once we're geared up, we'll break our next moves into a 4-step plan:
 
 Let's dive in.
 
-# x86 Assembly
+## x86 Assembly
 
 x86 assembly can be very daunting at first glance. But underneath all the arcane syntax, it boils down to a simple rule: instructions are executed one at a time, from top to bottom unless explicitly told to go elsewhere. One of the core concepts is the idea of *registers*. These registers can be thought of as the CPU's hands. If the CPU wants to do something with data, whether it be addition, subtraction, comparisons, etc., it must that data in a register first. Unlike variables in high-level languages, registers are limited in number and can have special purposes, so you have to be careful about what you put where.
 
@@ -56,7 +56,7 @@ There are other conditional jumps too (`jne`, `jg`, `jl`, etc.), each based on d
 
 All numerical values in x86 assembly are typically represented in hexadecimal (base 16), which uses digits 0–9 and letters A–F to represent values. Hexadecimal constants are often represented with the prefix `0x` when it may be ambiguous whether you're referring to a decimal or hexadecimal number.
 
-# The Debugger
+## The Debugger
 
 We will be exploring the program's assembly instructions with a **debugger**. A debugger is a piece of software that runs an executable and takes control over its execution. It grants the user control to step through the program line by line, examining registers, memory, and other key pieces of information as you go. Basically, it turns a running program into something you can poke, prod, and pause at will.
 
@@ -64,7 +64,7 @@ One of the most powerful features in a debugger is a breakpoint. A breakpoint is
 
 I'll be using x32dbg for this attack, but any debugger will do.
 
-# Step 1: Detective Work
+## Step 1: Detective Work
 
 With an understanding of x86 assembly and our tools established, we need to put on our detective badge. Most applications load many additional libraries (DLLs) at runtime. We need to identify which module is the culprit causing the popup or website to open. 
 
@@ -91,7 +91,7 @@ EDI     5B565830        pkgsh.5B565830
 
 And there it is, our culprit. The website URL sitting in the `esi` register right before execution, with `pkgsh.dll` showing up in the `edi` register, a clear indication that the call originates from this module. As with any investigation, seeing the suspect's address in the call stack is all but confirmation that `pkgsh.dll` is the one we're after.
 
-# Step 2: Sneaking Through Memory
+## Step 2: Sneaking Through Memory
 
 Now that we’ve identified `pkgsh.dll` as the shady character behind our annoying popup, we need to think of a way to dig into it's memory habits and find where it stashed our hash.
 
@@ -183,7 +183,7 @@ start → do_thing1()                start → part1_of_thing1()
 ***
 Now that the hash is loaded into memory and we didn't fall into the trap door, we can follow its usages like a breadcrumb trail to find our hash validation.
 
-# Step 3: Needle in a Haystack
+## Step 3: Needle in a Haystack
 
 To find our hash validation needle in this haystack of obfuscated instructions, let's recall a key fact: our hash that currently resides in memory must be accessed in order to be validated.
 
@@ -312,7 +312,7 @@ What's clever here is the control flow: the main loop (`jae` at `5B61259F`) keep
 Now that we've found our needle in the haystack, the more crucial piece of our puzzle is in place!<br>
 Time to make it forget its true from false.
 
-# Step 4: Confusing the Program
+## Step 4: Confusing the Program
 
 With the failure path identified, we need to think of how to exploit this code. One thought is to override how the hash comparison works, or even trace back how the hash we're comparing against is calculated. Both of these approaches would work, but taking a closer look, we have a clearly defined failure and success path that are quite similar. 
 
@@ -380,7 +380,7 @@ So, let's give that a try...
 <br><br>
 ... how do we save our changes?
 
-# Step 5?: It's Never as Easy as It Looks
+## Step 5?: It's Never as Easy as It Looks
 
 Unfortunately, saving this module isn't as easy as that due to the final layer of obfuscation. This DLL is **self-unpacking**, meaning it contains compressed / encrypted data. When the module is loaded, it contains instructions to **dynamically unpack itself** into more instructions. 
 
