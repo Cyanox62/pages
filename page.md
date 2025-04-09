@@ -531,7 +531,7 @@ typedef struct _PEB_LDR_DATA {       // Offset   Size
 } PEB_LDR_DATA, *PPEB_LDR_DATA;
 ```
 
-`eax` currently represents the beginning of this structure, which is contiguous in memory. As such, we can take offsets from the beginning to access any individual member within this structure. If we examine the sizes of each member within this structure from top to bottom, we see that `InMemoryOrderModuleList` is a total of 28 bytes from the beginning of the structure, which converts to `0x14` in hex. This means we can take the bigging of the structure `eax` and add `0x14` to it to access `InMemoryOrderModuleList`.
+`eax` currently represents the beginning of this structure, which is contiguous in memory. As such, we can take offsets from the beginning to access any individual member within this structure. If we examine the sizes of each member within this structure from top to bottom, we see that `InMemoryOrderModuleList` is a total of 28 bytes from the beginning of the structure, which converts to `0x14` in hex. This means we can take the beginning of the structure `eax` and add `0x14` to it to access `InMemoryOrderModuleList`.
 
 ***
 
