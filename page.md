@@ -1,4 +1,4 @@
-# Titles are Difficult
+# Removing Annoying Popups with Reverse Engineering
 
 No one really likes popup advertisements in software. But for some reason, certain closed-source developers treat these popups like their precious relics, guarded with layers of protection and a palpable fear of tampering. I encountered a program that displayed a popup and opens a website on startup recently that caused me a minor enough inconvenience to take it personally.
 
