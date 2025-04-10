@@ -222,7 +222,7 @@ Let's take a closer look at what this is doing:
 5B60E7B5    inc ecx                   │   ;  Move to next character in preparation for the next loop
 5B60E7B6    test al,al                │   ;  Check if current character in 'al' == 0   
                                       │           ; 0 represents a 'null terminator', which indicates the end of a string
-5B60E7B8    jne 5B60E7B3            ──┘   ;  If our comparison failed, keep looping
+5B60E7B8    jne 5B60E7B3            ──┘   ;  If our comparison failed, loop to the next character
 
                                           ;  If we make it to this point, we didn't jump back up
                                           ;  This indicates that we found the end of the string
