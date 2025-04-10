@@ -167,7 +167,11 @@ Address   Hex                                           ASCII
 5B603CF9  2E 69 6E 69 2E 0A 45 72 72 6F 72 20 63 6F 64  .ini..Error cod
 ```
 
-This line is loading a failure string, "Failed to load .ini", into the `edx` register. This, combined with the fact that the result of a `cmp` operation jumps over this block of code right after a `ReadFile` call, makes it highly likely that this is a failure path! Think of the concept of a failure path like a trap door. If the comparison fails, we walk straight into the pit of instructions that will display an error message. If the comparison succeeds, we jump over the pit, never see the error message, and continue on our merry way, none the wiser.
+This line is loading a failure string, "Failed to load .ini", into the `edx` register. This, combined with the fact that this code conditionally runs based on the result of the prior `test` (another type of comparison) instruction, makes it highly likely that this code is testing if the file was properly read! Due to the nature of assembly running from top to bottom, this demonstrates the importance of conditional branching. If the file was read properly, it'll **jump over** the code block that prints an error message. If the file read failed, it'll naturally flow into this code and display the error.
+
+Think of this concept like a large pit in your path. If the comparison fails, we walk straight into the pit of instructions that will display an error message. If the comparison succeeds, we jump over the pit, never see the error message, and continue on our merry way, none the wiser.
+
+The fact that the error message code was jumped over likely means the file has been successfully read and thus inserted into memory.
 ***
 Let's take a quick look down that pit to see another clever technique in play by the developers. You'll notice that within this failure path and throughout this executable is an abundance of `call` / `jmp` operations. This is known as *control flow obfuscation*. This is a technique where developers split up continuous instructions throughout the executable and throw in junk code that does nothing to throw off potential attackers.
 
