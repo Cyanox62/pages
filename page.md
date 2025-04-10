@@ -544,7 +544,7 @@ Given any module in the list, let's note down three important offsets:
 
 Now that we understand how to get our module base address, let's start constructing formal assembly.
 
-Our first step will be taking our sequential steps to find the `InMemoryOrderModuleList` structure and store it in `eax`:
+Our first step will be taking the same sequential steps as above to find the `InMemoryOrderModuleList` structure and store it in `eax`:
 ```asm
 mov eax, dword ptr fs:[30]      ;  A -> B
 mov eax, dword ptr ds:[eax+C]   ;  B -> C
