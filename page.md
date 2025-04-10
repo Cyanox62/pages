@@ -68,7 +68,7 @@ I'll be using [x32dbg](https://x64dbg.com/) for this attack, but any debugger wi
 
 ## Step 1: Detective Work
 
-With an understanding of x86 assembly and our tools established, we need to put on our detective badge. Most applications load many additional libraries (DLLs) at runtime. We need to identify which module is the culprit causing the popup or website to open. 
+With an understanding of x86 assembly and our tools established, we need to put on our detective badge. Most applications load many additional libraries (DLLs) at runtime, known as modules. We need to identify which module is the culprit causing the popup or website to open. 
 
 The easiest way to go about finding our target module would be to scan all loaded modules for any strings that match either the website URL or the text displayed on the popup. This is typically possible because strings are often stored in a module's data section, commonly in read-only memory segments. Unfortunately, this module is heavily obfuscated, with not only all strings being complete gibberish, but some other clever techniques we'll run into later. Let's just say the developers *really* didn't want you tampering with this module.
 
