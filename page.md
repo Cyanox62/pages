@@ -167,9 +167,9 @@ Address   Hex                                           ASCII
 5B603CF9  2E 69 6E 69 2E 0A 45 72 72 6F 72 20 63 6F 64  .ini..Error cod
 ```
 
-This line is loading a failure string, "Failed to load .ini", into the `edx` register. This, combined with the fact that this code conditionally runs based on the result of the prior `test` (another type of comparison) instruction, makes it highly likely that this code is testing if the file was properly read! Due to the nature of assembly running from top to bottom, this demonstrates the importance of conditional branching. If the file was read properly, it'll **jump over** the code block that prints an error message. If the file read failed, it'll naturally flow into this code and display the error.
+This line is loading a failure string, "Failed to load .ini", into the `edx` register. This, combined with the fact that this code conditionally runs based on the result of the prior `test` (another type of comparison) instruction, makes it highly likely that this code is testing if the file was properly read!
 
-Think of this concept like a large pit in your path. If the comparison fails, we walk straight into the pit of instructions that will display an error message. If the comparison succeeds, we jump over the pit, never see the error message, and continue on our merry way, none the wiser.
+Due to the nature of assembly running from top to bottom, this demonstrates the importance of conditional branching. If the file was read properly, it'll **jump over** the code block that prints an error message. If the file read failed, it'll naturally flow into this code and display the error. Think of this concept like a large pit in your path. If the comparison fails, we walk straight into the pit of instructions that will display an error message. If the comparison succeeds, we jump over the pit, never see the error message, and continue on our merry way, none the wiser.
 
 The fact that the error message code was jumped over likely means the file has been successfully read and thus inserted into memory.
 ***
