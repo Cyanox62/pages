@@ -173,7 +173,7 @@ Due to the nature of assembly running from top to bottom, this demonstrates the 
 
 The fact that the error message code was jumped over likely means the file has been successfully read and thus inserted into memory.
 ***
-Let's take a quick look down that pit to see another clever technique in play by the developers. You'll notice that within this failure path and throughout this executable is an abundance of `call` / `jmp` operations. This is known as *control flow obfuscation*. This is a technique where developers split up continuous instructions throughout the executable and throw in junk code that does nothing to throw off potential attackers.
+Let's take a quick look down that pit to see another clever technique in play by the developers. You'll notice that within this failure path and throughout this executable is an abundance of `call` / `jmp` operations. This is known as **control flow obfuscation**. This is a technique where developers split up continuous instructions throughout the executable and throw in junk code that does nothing to throw off potential attackers.
 
 ```
 Original Flow:                     Obfuscated Flow:
@@ -244,7 +244,8 @@ while (hash.charAt(ecx) != 0) {
 int length = ecx - edx
 ```
 
-While it does access our hash, this isn't doing any sort of validation, so this is likely not what we're looking for. Let's skip to the next time the memory is accessed.<br>
+While it does access our hash, this isn't doing any sort of validation, so this is likely not what we're looking for. Let's skip to the next time the memory is accessed.
+
 We got another hit! Here's the next spot the code accesses our hash:
 
 ```asm
@@ -269,7 +270,8 @@ We got another hit! Here's the next spot the code accesses our hash:
 This appears to be copying our hash to a new location in memory.<br>
 But this raises the question: **why?**
 
-If we continue executing the program, we'll find that our original hash from address `052A25E0` is **never accessed again**. This suggests yet another obfuscation / anti-tampering technique: relocating the data to throw off an attacker. As we can tell from the assembly above, the hash got copied to the address within `esi`.<br>
+If we continue executing the program, we'll find that our original hash from address `052A25E0` is **never accessed again**. This suggests yet another obfuscation / anti-tampering technique: relocating important to throw off an attacker. As we can tell from the assembly above, the hash got copied to the address within `esi`.
+
 No big deal, we'll just go to that location in memory:
 
 ```
@@ -286,7 +288,7 @@ Address   Hex                                              ASCII
 
 And unsurprisingly, we find our hash right here, identical to the first one. We know what we're doing by this point, let's keep following the breadcrumb trail and breakpoint the first byte again on this new location to see when this memory is accessed.
 
-The very first time this memory location is accessed, we come across something very promising:
+The very first time this new memory location is accessed, we come across something very promising:
 
 ```asm
 ; Hash comparison loop
@@ -348,7 +350,7 @@ or  eax, 1      ; 0x83 0xC8 0x01
 ; Success path (2 bytes total)
 xor eax, eax    ; 0x33 0xC0
 ```
-When modifying binaries, bytes cannot be added nor removed or the structure of the program will be compromised. To account for the 3 remaining bytes on the failure path after we overwrite its two instructions with the one instruction from the success path, we can add 3 `nop`s. This instruction stands for "no operation" and takes 1 byte each, perfect to use for padding when needed.
+When modifying binaries, bytes cannot be added nor removed or the structure of the program will be compromised. Since the failure path needs 3 more bytes of total data than the success path, we can append 3 `nop`s after our changes. This instruction stands for "no operation" and takes 1 byte each, perfect to use for padding when needed.
 
 ```asm
 (Modified) Failure path             Success path
@@ -363,7 +365,7 @@ When modifying binaries, bytes cannot be added nor removed or the structure of t
 5B6125DA | ret         | C3         5B6125DF | ret         | C3
 ```
 
-Now let's let our program finish execution. The code will begin the hash check, fail the first comparison, and jump to what it believes is the failure path at `5B6125D3`. But thanks to our handy work, the program has unknowingly leapt into what is now a perfect clone of the success path.
+Now let's let our program finish execution. The code will begin the hash check, fail the first 4-byte hash comparison, and jump to what it believes is the failure path at `5B6125D3`. But thanks to our handy work, the program has unknowingly leapt into what is now a perfect clone of the success path.
 
 With that, we now have an application free from popups! No matter what value we input as the hash, the program will always jump to a success path, tricking the program into always accepting our hash and avoiding the popup. 
 
@@ -390,7 +392,7 @@ So, let's give that a try...
 
 ## Step 5?: It's Never as Easy as It Looks
 
-Unfortunately, saving this module isn't as easy as that due to the final layer of obfuscation. This DLL is **self-unpacking**, meaning it contains compressed / encrypted data. When the module is loaded, it contains instructions to **dynamically unpack itself** into more instructions. 
+Unfortunately, saving this module isn't going to be that simple due to the final layer of obfuscation. This DLL is **self-unpacking**, meaning it contains compressed / encrypted data. When the module is loaded, it contains instructions to **dynamically unpack itself** into more instructions. 
 
 To illustrate a quick example, here's how a section of memory changes after the unpacking:
 
@@ -410,7 +412,7 @@ Address      | Before (Obfuscated)        | After (Deobfuscated)
 
 Due to how this self-unpacking DLL works, we face a unique challenge. The instructions we just modified **don't actually exist** in the file stored on disk. They're generated at runtime during the unpacking process. The self-unpacking instructions themselves are stored on disk, which means those instructions are the only ones we can permanently patch.
 
-It's likely a reasonable assumption to make that the module will finish unpacking before executing any unpacked instructions. This grants us a very small window of time between when the instructions finish unpacking and the execution shifts to the unpacked, non-persistent instructions. Within this time period, we need to force the application to execute some custom assembly code that will **dynamically overwrite** the unpacked instructions before they execute.
+I was able to confirm that the module finishes unpacking all instructions before executing any unpacked instructions with the use of breakpoints. This grants us a very small window of time between when the instructions finish unpacking and the execution shifts to the unpacked, non-persistent instructions. Within this time period, we need to force the application to execute some custom assembly code that will **dynamically overwrite** the unpacked instructions before they execute.
 
 As such, our first step is to find when the instructions finish unpacking. This can be easily done with the same breakpoint trick used in step 3 to find where our hash value in memory was accessed. This time, we'll find instructions in memory that have not yet been unpacked (like the ones in the example diagram above) and place a "Memory Write" breakpoint to let us know when they are overwritten by the unpacking code.
 
