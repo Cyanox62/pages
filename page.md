@@ -588,10 +588,12 @@ With all our pieces ready, let's fill in our jump addresses, add in our code to 
 5B59E8C1 | pushad                             ;  Maintains register integrity
 5B59E8C2 | pushfd                             ;  Maintains flag integrity
 
+; Fetching module list
 5B59E8C3 | mov eax,dword ptr fs:[30]          ;  Fetching InMemoryOrderModuleList
 5B59E8C9 | mov eax,dword ptr ds:[eax+C]    
 5B59E8CC | mov eax,dword ptr ds:[eax+14]   
 
+; Checking if we found our target module
 5B59E8D0 | mov esi,dword ptr ds:[eax+28]      ;  Comparison loop
 5B59E8D3 | cmp word ptr ds:[esi],4F        
 5B59E8D7 | jne 5B59E8F5                       ;  Jump to failure path         
@@ -601,21 +603,25 @@ With all our pieces ready, let's fill in our jump addresses, add in our code to 
 5B59E8E5 | jne 5B59E8F5                       ;  Jump to failure path     
 5B59E8E7 | cmp word ptr ds:[esi+6],69      
 5B59E8EC | jne 5B59E8F5                       ;  Jump to failure path       
-                             
-5B59E8EF | mov ebx,dword ptr ds:[eax+10]      ;  Success path
-5B59E8F2 | jmp 5B59E8FB                       ;  Jump over failure path!
-                             
-5B59E8F5 | mov eax,dword ptr ds:[eax]         ;  Failure path
-5B59E8F7 | test eax,eax                    
-5B59E8F9 | jne 5B59E8D0                    
 
-5B59E8FB | mov word ptr ds:[ebx+125D3],C033   ;  Now we have the module's base address in `ebx`
+; Success path
+5B59E8EF | mov ebx,dword ptr ds:[eax+10]      ;  Stores the module base address in 'ebx'
+5B59E8F2 | jmp 5B59E8FB                       ;  Jump over failure path!
+
+; Failure path
+5B59E8F5 | mov eax,dword ptr ds:[eax]         ;  Moves to the next module
+5B59E8F7 | test eax,eax                       ;  Tests if we have another module to check
+5B59E8F9 | jne 5B59E8D0                       ;  Jumps back to the top of the loop
+
+; Overwriting hash validation
+5B59E8FB | mov word ptr ds:[ebx+125D3],C033   ;  Now we have the module's base address in 'ebx'
 5B59E904 | mov word ptr ds:[ebx+125D5],9090   ;  We can use the base address with our offsets from earlier to overwrite the instructions!
 5B59E90D | mov byte ptr ds:[ebx+125D7],90
 
 5B59E914 | popfd                              ;  Restores flag integrity
 5B59E915 | popad                              ;  Restores register integrity
 
+; Second half of trampoline hook
 5B59E916 | jmp 5B1F07F9                       ;  The original location our unconditional jump was supposed to jump to
 ```
 
