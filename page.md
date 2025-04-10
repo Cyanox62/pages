@@ -546,9 +546,9 @@ Now that we understand how to get our module base address, let's start construct
 
 Our first step will be taking the same sequential steps as above to find the `InMemoryOrderModuleList` structure and store it in `eax`:
 ```asm
-mov eax, dword ptr fs:[30]      ;  A -> B
-mov eax, dword ptr ds:[eax+C]   ;  B -> C
-mov eax, dword ptr ds:[eax+14]  ;  C -> D
+mov eax, dword ptr fs:[30]      ;  A -> B (Getting PEB)
+mov eax, dword ptr ds:[eax+C]   ;  B -> C (Getting PEB_LDR_DATA)
+mov eax, dword ptr ds:[eax+14]  ;  C -> D (Getting InMemoryOrderModuleList)
 ```
 
 Now we can define a loop. For each module, we'll grab it's full name and then use comparisons to check if this is the right module.
