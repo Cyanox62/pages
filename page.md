@@ -620,7 +620,7 @@ With all our pieces ready, let's fill in our jump addresses, add in our code to 
 5B59E8F9 | jne 5B59E8D0                       ;  Jumps back to the top of the loop
 
 ; Overwriting hash validation
-5B59E8FB | mov word ptr ds:[ebx+125D3],C033   ;  Now we have the module's base address in 'ebx'
+5B59E8FB | mov word ptr ds:[ebx+125D3],C033   ;  At this point we have the module's base address in 'ebx'
 5B59E904 | mov word ptr ds:[ebx+125D5],9090   ;  We can use the base address with our offsets from earlier to overwrite the instructions!
 5B59E90D | mov byte ptr ds:[ebx+125D7],90
 
