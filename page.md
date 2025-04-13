@@ -270,7 +270,7 @@ We got another hit! Here's the next spot the code accesses our hash:
 This appears to be copying our hash to a new location in memory.<br>
 But this raises the question: **why?**
 
-If we continue executing the program, we'll find that our original hash from address `052A25E0` is **never accessed again**. This suggests yet another obfuscation / anti-tampering technique: relocating important to throw off an attacker. As we can tell from the assembly above, the hash got copied to the address within `esi`.
+If we continue executing the program, we'll find that our original hash from address `052A25E0` is **never accessed again**. This suggests yet another obfuscation / anti-tampering technique: relocating important data in memory to throw off an attacker. As we can tell from the assembly above, the hash got copied to the address within `esi`.
 
 No big deal, we'll just go to that location in memory:
 
