@@ -473,7 +473,7 @@ mov byte ptr ds:[base_address+125D7],90
 
 These instructions are simply performing the exact same overwrite on the failure path that we previously did manually. Just like in step 4, we overwrote the differing 5 bytes of instructions in the failure path with the 2 byte instruction from the success path, followed by 3 `nop`s, which are represented by `0x90` in hex.
 
-`125D3`, `125D5`, and `125D7` are the respective offsets where we can find those validation instructions in this module. That offset will always be static relative to the module position, but the module itself doesn't always load in the same position in memory. This is due to a security mechanism known as Address Space Layout Randomization (ASLR). The location the module loads into memory space is known as the **base address** of the module.
+`125D3`, `125D5`, and `125D7` are the respective offsets where we can find those validation instructions in this module. That offset will always be static relative to the module position, but the module itself doesn't always load in the same position in memory. This is due to a security mechanism known as **Address Space Layout Randomization (ASLR)**. The location the module loads into memory space is known as the **base address** of the module.
 
 Here's a visualization:
 
